@@ -35,6 +35,8 @@ namespace MethOperation
 
         int PlayerLabModel = -1;
         int NextUpdate = -1;
+        int LaptopRTID = -1;
+        bool IsLeaning = false;
 
         // Events
         event LabEnterEvent EnteredMethLab;
@@ -228,6 +230,18 @@ namespace MethOperation
                 World.DrawMarker(MarkerType.VerticalCylinder, Constants.MethLabExit, Vector3.Zero, Vector3.Zero, Constants.MarkerScale, Constants.MarkerColor);
                 World.DrawMarker(MarkerType.VerticalCylinder, Constants.MethLabLaptop, Vector3.Zero, Vector3.Zero, Constants.MarkerScale, Constants.MarkerColor);
 
+                // Laptop screen
+                if (LaptopRTID != -1)
+                {
+                    Function.Call(Hash.SET_TEXT_RENDER_ID, LaptopRTID);
+                    Function.Call(Hash._SET_SCREEN_DRAW_POSITION, 73, 73);
+                    Function.Call(Hash._SET_2D_LAYER, 4);
+                    Function.Call(Hash._0xC6372ECD45D73BCD, true);
+                    Function.Call((Hash)0x2BC54A8188768488, "prop_screen_biker_laptop", "prop_screen_biker_laptop_2", 0.5f, 0.5f, 1f, 1f, 0f, 255, 255, 255, 255);
+                    Function.Call((Hash)0xE3A3DB414A373DAB);
+                    Function.Call(Hash.SET_TEXT_RENDER_ID, 1);
+                }
+
                 if (PlayerPosition.DistanceTo(Constants.MethLabExit) <= Constants.MarkerInteractionDistance)
                 {
                     CurrentInteractionType = InteractionType.ExitMethLab;
@@ -241,6 +255,20 @@ namespace MethOperation
                 else
                 {
                     ManagementMenuPool.CloseAllMenus();
+
+                    if (IsLeaning)
+                    {
+                        CurrentInteractionType = InteractionType.CancelLean;
+                        Util.DisplayHelpText($"Press {HelpTextKeys.Get(InteractionControl)} to stop leaning on the rail.");
+                    }
+                    else
+                    {
+                        if (Game.Player.Character.IsInArea(Constants.LeanAreaMin, Constants.LeanAreaMax))
+                        {
+                            CurrentInteractionType = InteractionType.Lean;
+                            Util.DisplayHelpText($"Press {HelpTextKeys.Get(InteractionControl)} to lean on the rail.");
+                        }
+                    }
                 }
 
                 // Disable some controls inside the interior
@@ -361,6 +389,30 @@ namespace MethOperation
                         ManagementMenuPool.RefreshIndex();
                         ManagementMain.Visible = true;
                         break;
+
+                    case InteractionType.Lean:
+                        if (IsLeaning || !Game.Player.Character.IsInArea(Constants.LeanAreaMin, Constants.LeanAreaMax)) return;
+
+                        Util.RequestAnimDict("anim@amb@yacht@rail@standing@male@variant_01@");
+                        using (TaskSequence tseq = new TaskSequence())
+                        {
+                            Function.Call(Hash.TASK_GO_STRAIGHT_TO_COORD, 0, Constants.LeanPos.X, Constants.LeanPos.Y, Constants.LeanPos.Z, 1.0f, -1, Constants.LeanHeading, 0.0f);
+                            tseq.AddTask.PlayAnimation("anim@amb@yacht@rail@standing@male@variant_01@", "enter");
+                            tseq.AddTask.PlayAnimation("anim@amb@yacht@rail@standing@male@variant_01@", "base", 8.0f, -1, AnimationFlags.Loop);
+                            tseq.Close();
+
+                            Game.Player.Character.Task.PerformSequence(tseq);
+                        }
+
+                        IsLeaning = true;
+                        break;
+
+                    case InteractionType.CancelLean:
+                        if (!IsLeaning) return;
+
+                        Game.Player.Character.Task.PlayAnimation("anim@amb@yacht@rail@standing@male@variant_01@", "exit");
+                        IsLeaning = false;
+                        break;
                 }
             }
             #endregion
@@ -391,6 +443,14 @@ namespace MethOperation
         {
             ManagementBlip.Alpha = 255;
             ManagementMain.Clear();
+
+            // Fancy stuff
+            LaptopRTID = Util.SetupRenderTarget();
+            IsLeaning = false;
+
+            // Audio
+            Function.Call(Hash.REQUEST_SCRIPT_AUDIO_BANK, "DLC_BIKER/Interior_Meth", false, -1);
+            Function.Call(Hash.START_AUDIO_SCENE, "Biker_Warehouses_Meth_Scene");
 
             // Interior props and menu filling
             for (int i = 0; i < Constants.InteriorProps.Length; i++) Function.Call(Hash._DISABLE_INTERIOR_PROP, LabInteriorID, Constants.InteriorProps[i]);
@@ -478,6 +538,9 @@ namespace MethOperation
 
                 // Add product props
                 for (int i = 0; i < MethLabs[labIndex].Product; i++) MethLabEntities.Add(World.CreateProp("bkr_prop_meth_bigbag_01a", Constants.MethBoxes[i].Item1, new Vector3(0f, 0f, Constants.MethBoxes[i].Item2), false, false));
+
+                // Lab ambient audio
+                Function.Call(Hash.SET_AMBIENT_ZONE_STATE, MethLabs[labIndex].AmbientZoneName, true, true);
             }
             else
             {
@@ -502,10 +565,18 @@ namespace MethOperation
             ManagementBlip.Alpha = 0;
             ManagementMenuPool.CloseAllMenus();
 
+            Util.ReleaseRenderTarget();
+            Function.Call(Hash.SET_AMBIENT_ZONE_STATE, MethLabs[labIndex].AmbientZoneName, false, true);
+            Function.Call(Hash.STOP_AUDIO_SCENE, "Biker_Warehouses_Meth_Scene");
+            Function.Call(Hash.RELEASE_NAMED_SCRIPT_AUDIO_BANK, "DLC_BIKER/Interior_Meth");
+
             if (reason == LabExitReason.CharacterChange || reason == LabExitReason.ScriptExit)
             {
                 Game.Player.Character.Position = MethLabs[labIndex].Position;
             }
+
+            LaptopRTID = -1;
+            IsLeaning = false;
 
             foreach (Entity ent in MethLabEntities) ent?.Delete();
             MethLabEntities.Clear();
@@ -576,6 +647,9 @@ namespace MethOperation
                     Function.Call(Hash._DISABLE_INTERIOR_PROP, LabInteriorID, "meth_lab_basic");
                     Function.Call(Hash._ENABLE_INTERIOR_PROP, LabInteriorID, "meth_lab_upgrade");
                     Function.Call(Hash.REFRESH_INTERIOR, LabInteriorID);
+
+                    Function.Call(Hash.SET_AMBIENT_ZONE_STATE, "AZ_DLC_Biker_Meth_Warehouse_Normal", false, true);
+                    Function.Call(Hash.SET_AMBIENT_ZONE_STATE, "AZ_DLC_Biker_Meth_Warehouse_Upgraded", true, true);
 
                     selectedItem.SetLeftBadge(UIMenuItem.BadgeStyle.Tick);
                     selectedItem.Enabled = false;

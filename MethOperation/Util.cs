@@ -102,5 +102,33 @@ namespace MethOperation
             Function.Call(Hash.TASK_START_SCENARIO_IN_PLACE, handle, "WORLD_HUMAN_GUARD_STAND", -1, false);
             return security;
         }
+
+        public static int SetupRenderTarget()
+        {
+            Function.Call(Hash.REQUEST_STREAMED_TEXTURE_DICT, "prop_screen_biker_laptop", false);
+            while (!Function.Call<bool>(Hash.HAS_STREAMED_TEXTURE_DICT_LOADED, "prop_screen_biker_laptop")) Script.Yield();
+
+            if (!Function.Call<bool>(Hash.IS_NAMED_RENDERTARGET_REGISTERED, "prop_clubhouse_laptop_01a"))
+            {
+                Function.Call(Hash.REGISTER_NAMED_RENDERTARGET, "prop_clubhouse_laptop_01a", false);
+
+                int rtLinkHash = Game.GenerateHash("bkr_prop_clubhouse_laptop_01a");
+                if (!Function.Call<bool>(Hash.IS_NAMED_RENDERTARGET_LINKED, rtLinkHash)) Function.Call(Hash.LINK_NAMED_RENDERTARGET, rtLinkHash);
+            }
+
+            return Function.Call<int>(Hash.GET_NAMED_RENDERTARGET_RENDER_ID, "prop_clubhouse_laptop_01a");
+        }
+
+        public static void ReleaseRenderTarget()
+        {
+            if (Function.Call<bool>(Hash.IS_NAMED_RENDERTARGET_REGISTERED, "prop_clubhouse_laptop_01a")) Function.Call(Hash.RELEASE_NAMED_RENDERTARGET, "prop_clubhouse_laptop_01a");
+            Function.Call(Hash.SET_STREAMED_TEXTURE_DICT_AS_NO_LONGER_NEEDED, "prop_screen_biker_laptop");
+        }
+
+        public static void RequestAnimDict(string name)
+        {
+            Function.Call(Hash.REQUEST_ANIM_DICT, name);
+            while (!Function.Call<bool>(Hash.HAS_ANIM_DICT_LOADED, name)) Script.Yield();
+        }
     }
 }

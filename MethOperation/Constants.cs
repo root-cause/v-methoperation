@@ -22,6 +22,11 @@ namespace MethOperation
         public static readonly Vector3 MethLabExit = new Vector3(997.2960f, -3200.676f, -37.3937f);
         public static readonly Vector3 MethLabLaptop = new Vector3(1001.9387f, -3195.216f, -39.9931f);
 
+        public static readonly Vector3 LeanAreaMin = new Vector3(998.5406f, -3198.149f, -36.0f);
+        public static readonly Vector3 LeanAreaMax = new Vector3(999.65f, -3202.0f, -37.39315f);
+        public static readonly Vector3 LeanPos = new Vector3(999.03f, -3200.07f, -36.39f);
+        public static readonly float LeanHeading = 270.0f;
+
         public static readonly Color MarkerColor = Color.FromArgb(255, 93, 182, 229);
         public static readonly Color MissionMarkerColor = Color.FromArgb(255, 240, 200, 80);
 

@@ -51,6 +51,9 @@ namespace MethOperation.Classes
         [XmlIgnore]
         public int ProductValue => Product * Main.ProductValue;
 
+        [XmlIgnore]
+        public string AmbientZoneName => HasFlag(LabFlags.HasEquipmentUpgrade) ? "AZ_DLC_Biker_Meth_Warehouse_Upgraded" : "AZ_DLC_Biker_Meth_Warehouse_Normal";
+
         private int _product = 0;
         private Character _owner = Character.Unknown;
         private Blip _blip = null;

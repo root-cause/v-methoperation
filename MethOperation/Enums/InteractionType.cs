@@ -6,6 +6,8 @@
         BuyMethLab,
         EnterMethLab,
         ExitMethLab,
-        ManageMethLab
+        ManageMethLab,
+        Lean,
+        CancelLean
     }
 }
